@@ -1191,17 +1191,22 @@ async function sendMessage() {
   document.getElementById('quickQuestions').style.display = 'none';
 
   addMessage(text, 'user');
-  chatHistory.push({ role: 'user', parts: [{ text }] });
-
   const typingId = addTyping();
+
+  // First message: embed system prompt so Gemini knows its role
+  // Follow-up messages: append to existing history
+  const userPart = chatHistory.length === 0
+    ? SYSTEM_PROMPT + '\n\nFarmer question: ' + text
+    : text;
+
+  const contents = [...chatHistory, { role: 'user', parts: [{ text: userPart }] }];
 
   try {
     const response = await fetch(GEMINI_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: chatHistory,
+        contents,
         generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
       })
     });
@@ -1212,11 +1217,16 @@ async function sendMessage() {
     if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
       const reply = data.candidates[0].content.parts[0].text;
       addMessage(reply, 'bot');
+
+      // Save alternating history
+      chatHistory.push({ role: 'user', parts: [{ text: userPart }] });
       chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-      // Keep last 10 messages only
-      if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+
+      // Keep last 16 messages (8 exchanges)
+      if (chatHistory.length > 16) chatHistory = chatHistory.slice(-16);
+
     } else {
-      console.error('Gemini response:', data);
+      console.error('Gemini response:', JSON.stringify(data));
       addMessage("Sorry, I couldn't get a response. Please try again!", 'bot');
     }
 
