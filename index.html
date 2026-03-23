@@ -1134,14 +1134,22 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
 
   <div class="chat-input-area">
     <input class="chat-input" id="chatInput" type="text" placeholder="Ask a farming question..." />
-    <button class="chat-send" id="chatSendBtn" onclick="sendMessage()">➤</button>
+    <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
   </div>
 </div>
 
-<script>
+<script type="importmap">
+{
+  "imports": {
+    "@google/generative-ai": "https://esm.run/@google/generative-ai"
+  }
+}
+</script>
+<script type="module">
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 // ── CHATBOT ───────────────────────────────────────────────────
-const GEMINI_API_KEY = 'AIzaSyDX6znhPjJOGTiacothlChmVt4eToeBxgI';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_KEY = 'AIzaSyBB82MkMfHVg_fxftzcgPa8YM1UjfUfJUo';
 
 const SYSTEM_PROMPT = `You are AgriFury Assistant, an expert AI farming assistant specializing in plant diseases, crop care, and agriculture — especially for Indian farmers in Kerala and South India.
 
@@ -1162,10 +1170,17 @@ Keep answers:
 
 If asked something unrelated to farming, politely redirect to farming topics.`;
 
-let chatHistory = [];
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({
+  model: 'gemini-2.5-flash',
+  systemInstruction: SYSTEM_PROMPT
+});
+
+let chatSession = geminiModel.startChat({ history: [] });
 let chatOpen = false;
 
-function toggleChat() {
+// Expose functions globally so onclick works
+window.toggleChat = function() {
   chatOpen = !chatOpen;
   const win = document.getElementById('chatWindow');
   const notif = document.getElementById('chatNotif');
@@ -1176,12 +1191,12 @@ function toggleChat() {
   }
 }
 
-function sendQuick(text) {
+window.sendQuick = function(text) {
   document.getElementById('chatInput').value = text;
-  sendMessage();
+  window.sendChat();
 }
 
-async function sendMessage() {
+window.sendChat = async function() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
@@ -1193,47 +1208,15 @@ async function sendMessage() {
   addMessage(text, 'user');
   const typingId = addTyping();
 
-  // First message: embed system prompt so Gemini knows its role
-  // Follow-up messages: append to existing history
-  const userPart = chatHistory.length === 0
-    ? SYSTEM_PROMPT + '\n\nFarmer question: ' + text
-    : text;
-
-  const contents = [...chatHistory, { role: 'user', parts: [{ text: userPart }] }];
-
   try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents,
-        generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
-      })
-    });
-
-    const data = await response.json();
+    const result = await chatSession.sendMessage(text);
+    const reply = await result.response.text();
     removeTyping(typingId);
-
-    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
-      const reply = data.candidates[0].content.parts[0].text;
-      addMessage(reply, 'bot');
-
-      // Save alternating history
-      chatHistory.push({ role: 'user', parts: [{ text: userPart }] });
-      chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-
-      // Keep last 16 messages (8 exchanges)
-      if (chatHistory.length > 16) chatHistory = chatHistory.slice(-16);
-
-    } else {
-      console.error('Gemini response:', JSON.stringify(data));
-      addMessage("Sorry, I couldn't get a response. Please try again!", 'bot');
-    }
-
+    addMessage(reply, 'bot');
   } catch (err) {
     removeTyping(typingId);
     console.error('Gemini error:', err);
-    addMessage("Connection error. Please check your internet and try again!", 'bot');
+    addMessage("Sorry, something went wrong. Please try again!", 'bot');
   }
 
   document.getElementById('chatSendBtn').disabled = false;
@@ -1264,7 +1247,7 @@ function removeTyping(id) {
 
 // Send on Enter key
 document.getElementById('chatInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMessage();
+  if (e.key === 'Enter') window.sendChat();
 });
 </script>
 </body>
