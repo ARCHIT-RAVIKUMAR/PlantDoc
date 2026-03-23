@@ -1138,10 +1138,18 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   </div>
 </div>
 
-<script>
+<script type="importmap">
+{
+  "imports": {
+    "@google/generative-ai": "https://esm.run/@google/generative-ai"
+  }
+}
+</script>
+<script type="module">
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
 // ── CHATBOT ───────────────────────────────────────────────────
 const GEMINI_API_KEY = 'AIzaSyDX6znhPjJOGTiacothIChmVt4eToeBxgl';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are AgriFury Assistant, an expert AI farming assistant specializing in plant diseases, crop care, and agriculture — especially for Indian farmers in Kerala and South India.
 
@@ -1162,10 +1170,16 @@ Keep answers:
 
 If asked something unrelated to farming, politely redirect to farming topics.`;
 
-let chatHistory = [];
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const geminiModel = genAI.getGenerativeModel({
+  model: "gemini-2.5-flash",
+  systemInstruction: SYSTEM_PROMPT
+});
+
+let chatSession = geminiModel.startChat({ history: [] });
 let chatOpen = false;
 
-function toggleChat() {
+window.toggleChat = function() {
   chatOpen = !chatOpen;
   const win = document.getElementById('chatWindow');
   const notif = document.getElementById('chatNotif');
@@ -1176,12 +1190,12 @@ function toggleChat() {
   }
 }
 
-function sendQuick(text) {
+window.sendQuick = function(text) {
   document.getElementById('chatInput').value = text;
-  sendMessage();
+  window.sendMessage();
 }
 
-async function sendMessage() {
+window.sendMessage = async function() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
@@ -1194,34 +1208,18 @@ async function sendMessage() {
 
   // Add user message
   addMessage(text, 'user');
-  chatHistory.push({ role: 'user', parts: [{ text }] });
 
   // Show typing indicator
   const typingId = addTyping();
 
   try {
-    const response = await fetch(GEMINI_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        contents: chatHistory,
-        generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
-      })
-    });
-
-    const data = await response.json();
+    const result = await chatSession.sendMessage(text);
+    const reply = result.response.text();
     removeTyping(typingId);
-
-    const reply = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Sorry, I couldn't process that. Please try again!";
     addMessage(reply, 'bot');
-    chatHistory.push({ role: 'model', parts: [{ text: reply }] });
-
-    // Keep history to last 10 messages
-    if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
-
   } catch (err) {
     removeTyping(typingId);
+    console.error('Gemini error:', err);
     addMessage("Sorry, something went wrong. Please check your connection and try again!", 'bot');
   }
 
@@ -1253,7 +1251,7 @@ function removeTyping(id) {
 
 // Send on Enter key
 document.getElementById('chatInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') sendMessage();
+  if (e.key === 'Enter') window.sendMessage();
 });
 </script>
 </body>
