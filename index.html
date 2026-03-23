@@ -1138,18 +1138,10 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   </div>
 </div>
 
-<script type="importmap">
-{
-  "imports": {
-    "@google/generative-ai": "https://esm.run/@google/generative-ai"
-  }
-}
-</script>
-<script type="module">
-import { GoogleGenerativeAI } from "@google/generative-ai";
-
+<script>
 // ── CHATBOT ───────────────────────────────────────────────────
-const GEMINI_API_KEY = 'AIzaSyBB82MkMfHVg_fxftzcgPa8YM1UjfUfJUo';
+const GEMINI_API_KEY = 'AIzaSyDX6znhPjJOGTiacothlChmVt4eToeBxgI';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-04-17:generateContent?key=${GEMINI_API_KEY}`;
 
 const SYSTEM_PROMPT = `You are AgriFury Assistant, an expert AI farming assistant specializing in plant diseases, crop care, and agriculture — especially for Indian farmers in Kerala and South India.
 
@@ -1170,16 +1162,10 @@ Keep answers:
 
 If asked something unrelated to farming, politely redirect to farming topics.`;
 
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
-const geminiModel = genAI.getGenerativeModel({
-  model: "gemini-2.5-flash",
-  systemInstruction: SYSTEM_PROMPT
-});
-
-let chatSession = geminiModel.startChat({ history: [] });
+let chatHistory = [];
 let chatOpen = false;
 
-window.toggleChat = function() {
+function toggleChat() {
   chatOpen = !chatOpen;
   const win = document.getElementById('chatWindow');
   const notif = document.getElementById('chatNotif');
@@ -1190,37 +1176,54 @@ window.toggleChat = function() {
   }
 }
 
-window.sendQuick = function(text) {
+function sendQuick(text) {
   document.getElementById('chatInput').value = text;
-  window.sendMessage();
+  sendMessage();
 }
 
-window.sendMessage = async function() {
+async function sendMessage() {
   const input = document.getElementById('chatInput');
   const text = input.value.trim();
   if (!text) return;
 
   input.value = '';
   document.getElementById('chatSendBtn').disabled = true;
-
-  // Hide quick questions after first message
   document.getElementById('quickQuestions').style.display = 'none';
 
-  // Add user message
   addMessage(text, 'user');
+  chatHistory.push({ role: 'user', parts: [{ text }] });
 
-  // Show typing indicator
   const typingId = addTyping();
 
   try {
-    const result = await chatSession.sendMessage(text);
-    const reply = result.response.text();
+    const response = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        contents: chatHistory,
+        generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
+      })
+    });
+
+    const data = await response.json();
     removeTyping(typingId);
-    addMessage(reply, 'bot');
+
+    if (data?.candidates?.[0]?.content?.parts?.[0]?.text) {
+      const reply = data.candidates[0].content.parts[0].text;
+      addMessage(reply, 'bot');
+      chatHistory.push({ role: 'model', parts: [{ text: reply }] });
+      // Keep last 10 messages only
+      if (chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
+    } else {
+      console.error('Gemini response:', data);
+      addMessage("Sorry, I couldn't get a response. Please try again!", 'bot');
+    }
+
   } catch (err) {
     removeTyping(typingId);
     console.error('Gemini error:', err);
-    addMessage("Sorry, something went wrong. Please check your connection and try again!", 'bot');
+    addMessage("Connection error. Please check your internet and try again!", 'bot');
   }
 
   document.getElementById('chatSendBtn').disabled = false;
@@ -1251,7 +1254,7 @@ function removeTyping(id) {
 
 // Send on Enter key
 document.getElementById('chatInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') window.sendMessage();
+  if (e.key === 'Enter') sendMessage();
 });
 </script>
 </body>
