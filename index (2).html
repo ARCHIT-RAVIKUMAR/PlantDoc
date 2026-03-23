@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AgriPulse – AI Plant Disease Detection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green-deep:  #1a3a1f;
+      --green-mid:   #2d5a35;
+      --green-fresh: #4a9157;
+      --green-light: #7cc47f;
+      --cream:       #f5f0e8;
+      --gold:        #c8a84b;
+      --text-dark:   #1a1a1a;
+      --text-muted:  #6b7c6e;
+    }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--cream);
+      color: var(--text-dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 80%, rgba(74,145,87,0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(26,58,31,0.06) 0%, transparent 50%),
+        url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%234a9157' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      pointer-events: none; z-index: 0;
+    }
+
+    /* HEADER */
+    header {
+      position: relative; z-index: 10;
+      background: var(--green-deep);
+      padding: 0 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 70px;
+      box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: var(--green-fresh); border-radius: 10px;
+      display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+    .logo-text { font-family: 'Playfair Display', serif; font-size: 1.5rem; color: var(--cream); }
+    .logo-text span { color: var(--green-light); }
+    nav a {
+      color: rgba(245,240,232,0.7); text-decoration: none;
+      margin-left: 2rem; font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
+    }
+    nav a:hover { color: var(--green-light); }
+
+    /* HERO */
+    .hero { position: relative; z-index: 1; text-align: center; padding: 70px 2rem 50px; }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(74,145,87,0.15); border: 1px solid rgba(74,145,87,0.4);
+      color: var(--green-fresh); font-size: 0.78rem; font-weight: 600;
+      letter-spacing: 2px; text-transform: uppercase;
+      padding: 6px 18px; border-radius: 50px; margin-bottom: 22px;
+    }
+    .hero h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: clamp(2.2rem, 5vw, 3.8rem); font-weight: 900; line-height: 1.1;
+      color: var(--green-deep); max-width: 700px; margin: 0 auto 18px;
+    }
+    .hero h1 em { font-style: normal; color: var(--green-fresh); position: relative; }
+    .hero h1 em::after {
+      content: ''; position: absolute; bottom: 2px; left: 0; right: 0;
+      height: 3px; background: var(--green-light); border-radius: 2px; opacity: 0.5;
+    }
+    .hero p { color: var(--text-muted); font-size: 1rem; max-width: 520px; margin: 0 auto; line-height: 1.7; }
+
+    /* MAIN CARD */
+    .main-card { position: relative; z-index: 1; max-width: 860px; margin: 0 auto 60px; padding: 0 1.5rem; }
+    .card {
+      background: #fff; border-radius: 24px;
+      box-shadow: 0 8px 60px rgba(26,58,31,0.12), 0 2px 12px rgba(0,0,0,0.06);
+      overflow: hidden;
+    }
+
+    /* MODE TABS */
+    .mode-tabs { display: flex; border-bottom: 2px solid #eef2ee; }
+    .mode-tab {
+      flex: 1; padding: 1.1rem; text-align: center; cursor: pointer;
+      font-size: 0.92rem; font-weight: 600; color: var(--text-muted);
+      background: transparent; border: none; font-family: 'DM Sans', sans-serif;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      transition: all 0.2s; border-bottom: 3px solid transparent; margin-bottom: -2px;
+    }
+    .mode-tab:hover { color: var(--green-fresh); background: #fafcfa; }
+    .mode-tab.active { color: var(--green-deep); border-bottom-color: var(--green-fresh); background: #fff; }
+    .tab-icon { font-size: 1.1rem; }
+
+    /* PANELS */
+    .panel { display: none; padding: 2.2rem; }
+    .panel.active { display: block; }
+
+    /* SETUP NOTICE */
+
+    /* SECTION LABEL */
+    .section-label {
+      font-size: 0.78rem; font-weight: 700; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--text-muted);
+      margin-bottom: 14px; display: block;
+    }
+
+    /* UPLOAD ZONE */
+    .upload-zone {
+      border: 2px dashed #c8d9ca; border-radius: 16px;
+      padding: 2.8rem 2rem; text-align: center; cursor: pointer;
+      transition: all 0.3s; background: #fafcfa; position: relative;
+    }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--green-fresh); background: rgba(74,145,87,0.04); }
+    .upload-zone input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+    .upload-icon {
+      width: 60px; height: 60px;
+      background: linear-gradient(135deg,#e8f5e9,#c8e6c9); border-radius: 50%;
+      margin: 0 auto 14px; display: flex; align-items: center; justify-content: center; font-size: 26px;
+    }
+    .upload-zone h3 { font-size: 1rem; font-weight: 600; color: var(--green-deep); margin-bottom: 5px; }
+    .upload-zone p { font-size: 0.85rem; color: var(--text-muted); }
+    .upload-zone p strong { color: var(--green-fresh); font-weight: 600; }
+
+    /* UPLOAD PREVIEW */
+    .preview-container { display: none; margin-top: 18px; }
+    .preview-container.visible { display: flex; gap: 16px; align-items: flex-start; }
+    .preview-image-wrap {
+      flex-shrink: 0; width: 150px; height: 150px;
+      border-radius: 14px; overflow: hidden; border: 3px solid var(--green-light);
+    }
+    .preview-image-wrap img { width: 100%; height: 100%; object-fit: cover; }
+    .preview-info { flex: 1; }
+    .preview-filename { font-size: 0.85rem; font-weight: 600; color: var(--green-deep); margin-bottom: 5px; word-break: break-all; }
+    .preview-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 14px; }
+
+    /* WEBCAM */
+    .webcam-container {
+      position: relative; background: #0d1f10; border-radius: 16px; overflow: hidden;
+      aspect-ratio: 4/3; max-height: 380px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    #webcamVideo { width: 100%; height: 100%; object-fit: cover; display: none; border-radius: 16px; }
+    .webcam-placeholder {
+      position: absolute; inset: 0;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 12px; color: rgba(255,255,255,0.5); font-size: 0.9rem;
+    }
+    .webcam-placeholder .cam-icon { font-size: 3rem; opacity: 0.4; }
+
+    /* scan overlay */
+    .scan-overlay { position: absolute; inset: 0; pointer-events: none; display: none; }
+    .scan-overlay.active { display: block; }
+    .scan-line {
+      position: absolute; left: 10%; right: 10%; height: 2px;
+      background: linear-gradient(90deg,transparent,var(--green-light),transparent);
+      box-shadow: 0 0 10px var(--green-fresh);
+      animation: scanMove 2s ease-in-out infinite;
+    }
+    @keyframes scanMove { 0%{top:10%;opacity:0;} 10%{opacity:1;} 90%{opacity:1;} 100%{top:90%;opacity:0;} }
+    .scan-corners::before, .scan-corners::after {
+      content: ''; position: absolute;
+      width: 40px; height: 40px; border-color: var(--green-light); border-style: solid; opacity: 0.7;
+    }
+    .scan-corners::before { top:12px;left:12px; border-width:3px 0 0 3px; border-radius:4px 0 0 0; }
+    .scan-corners::after  { bottom:12px;right:12px; border-width:0 3px 3px 0; border-radius:0 0 4px 0; }
+
+    #capturedCanvas { display:none; width:100%; height:100%; object-fit:cover; position:absolute; top:0;left:0; border-radius:16px; }
+
+    .webcam-controls { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+    .cam-status {
+      font-size:0.82rem; color:var(--text-muted);
+      display:none; align-items:center; gap:6px; margin-top:10px;
+    }
+    .cam-live-dot { width:8px;height:8px;border-radius:50%;background:#ef4444;animation:blink 1s infinite; }
+    @keyframes blink{0%,100%{opacity:1;}50%{opacity:0.2;}}
+
+    .captured-thumb { display:none; margin-top:16px; gap:14px; align-items:flex-start; }
+    .captured-thumb.visible { display:flex; }
+    .captured-thumb-img { width:120px;height:120px;border-radius:12px;overflow:hidden;border:3px solid var(--green-fresh);flex-shrink:0; }
+    .captured-thumb-img img { width:100%;height:100%;object-fit:cover; }
+    .captured-thumb-info { flex:1; }
+    .captured-label { font-size:0.85rem;font-weight:600;color:var(--green-deep);margin-bottom:5px; }
+    .captured-meta  { font-size:0.8rem;color:var(--text-muted);margin-bottom:12px; }
+
+    /* BUTTONS */
+    .btn {
+      display:inline-flex; align-items:center; gap:8px;
+      border:none; padding:11px 24px; border-radius:50px;
+      font-family:'DM Sans',sans-serif; font-size:0.9rem; font-weight:600;
+      cursor:pointer; transition:all 0.2s;
+    }
+    .btn-primary { background:var(--green-deep); color:var(--cream); }
+    .btn-primary:hover { background:var(--green-mid); transform:translateY(-1px); box-shadow:0 6px 20px rgba(26,58,31,0.3); }
+    .btn-primary:disabled { background:#aaa; cursor:not-allowed; transform:none; box-shadow:none; }
+    .btn-secondary { background:transparent; color:var(--text-muted); border:1.5px solid #ccc; }
+    .btn-secondary:hover { border-color:#999; color:var(--text-dark); }
+    .btn-danger { background:#fee2e2; color:#991b1b; border:1.5px solid #fca5a5; }
+    .btn-danger:hover { background:#fecaca; }
+    .btn-green { background:var(--green-fresh); color:#fff; }
+    .btn-green:hover { background:var(--green-mid); transform:translateY(-1px); box-shadow:0 4px 16px rgba(74,145,87,0.4); }
+
+    /* LOADING */
+    .loading-bar { display:none; margin-top:18px; }
+    .loading-bar.visible { display:block; }
+    .loading-text { font-size:0.83rem; color:var(--text-muted); margin-bottom:7px; }
+    .progress-track { height:6px; background:#e8f0e9; border-radius:10px; overflow:hidden; }
+    .progress-fill {
+      height:100%; background:linear-gradient(90deg,var(--green-fresh),var(--green-light));
+      border-radius:10px; width:0%; transition:width 0.4s ease;
+      animation:pulse-prog 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-prog{0%,100%{opacity:1;}50%{opacity:0.7;}}
+
+    /* ERROR */
+    .error-box {
+      background:#fff5f5; border:1px solid #fca5a5; border-radius:12px;
+      padding:0.9rem 1.2rem; color:#991b1b; font-size:0.87rem;
+      display:none; margin-top:14px;
+    }
+    .error-box.visible { display:flex; align-items:center; gap:10px; }
+
+    /* RESULTS */
+    .results-section { padding:2.2rem; display:none; border-top:1px solid #eef2ee; }
+    .results-section.visible { display:block; }
+    .results-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; }
+    .results-title { font-family:'Playfair Display',serif; font-size:1.35rem; color:var(--green-deep); }
+    .confidence-pill {
+      background:rgba(74,145,87,0.1); color:var(--green-mid);
+      font-size:0.8rem; font-weight:700; padding:5px 14px; border-radius:50px;
+      border:1px solid rgba(74,145,87,0.25);
+    }
+    .source-tag {
+      font-size:0.73rem; color:var(--text-muted);
+      background:#f0f4f0; padding:3px 10px; border-radius:50px; margin-left:8px;
+    }
+
+    .disease-card {
+      border-radius:16px; padding:1.4rem; margin-bottom:20px;
+      display:flex; gap:16px; align-items:flex-start; border:2px solid;
+      animation:fadeUp 0.4s ease both;
+    }
+    @keyframes fadeUp{from{opacity:0;transform:translateY(14px);}to{opacity:1;transform:none;}}
+    .disease-card.severity-high   { background:#fff5f5; border-color:#fca5a5; }
+    .disease-card.severity-medium { background:#fffbeb; border-color:#fcd34d; }
+    .disease-card.severity-low    { background:#f0fdf4; border-color:#86efac; }
+    .disease-card.severity-healthy{ background:#f0fdf4; border-color:var(--green-fresh); }
+
+    .disease-icon { width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0; }
+    .severity-high   .disease-icon { background:#fee2e2; }
+    .severity-medium .disease-icon { background:#fef3c7; }
+    .severity-low    .disease-icon,
+    .severity-healthy .disease-icon{ background:#dcfce7; }
+
+    .disease-name { font-family:'Playfair Display',serif; font-size:1.15rem; font-weight:700; margin-bottom:4px; }
+    .severity-high   .disease-name { color:#991b1b; }
+    .severity-medium .disease-name { color:#92400e; }
+    .severity-low    .disease-name,
+    .severity-healthy .disease-name { color:var(--green-deep); }
+    .disease-latin { font-size:0.8rem; font-style:italic; color:var(--text-muted); margin-bottom:8px; }
+    .disease-desc  { font-size:0.88rem; color:#555; line-height:1.6; }
+
+    .severity-badge {
+      display:inline-flex; align-items:center; gap:6px; padding:4px 12px; border-radius:50px;
+      font-size:0.73rem; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:10px;
+    }
+    .badge-high    { background:#fee2e2; color:#991b1b; }
+    .badge-medium  { background:#fef3c7; color:#92400e; }
+    .badge-low     { background:#dcfce7; color:#166534; }
+    .badge-healthy { background:#dcfce7; color:#166534; }
+
+    /* LOW CONFIDENCE WARNING */
+    .low-confidence-box {
+      display: none;
+      background: #fffbeb;
+      border: 2px solid #f59e0b;
+      border-radius: 16px;
+      padding: 1.2rem 1.4rem;
+      margin-bottom: 20px;
+      gap: 14px;
+      align-items: flex-start;
+      animation: fadeUp 0.4s ease both;
+    }
+    .low-confidence-box.visible { display: flex; }
+    .lc-icon { font-size: 1.8rem; flex-shrink: 0; margin-top: 2px; }
+    .lc-title { font-family: 'Playfair Display', serif; font-size: 1rem; font-weight: 700; color: #92400e; margin-bottom: 6px; }
+    .lc-desc { font-size: 0.85rem; color: #78350f; line-height: 1.6; margin-bottom: 10px; }
+    .lc-tips { font-size: 0.8rem; color: #92400e; background: rgba(245,158,11,0.1); border-radius: 8px; padding: 8px 12px; line-height: 1.6; }
+    .lc-tips span { font-weight: 700; margin-right: 4px; }
+
+
+    .remedy-grid { display:grid;grid-template-columns:1fr 1fr;gap:13px; }
+    @media(max-width:560px){.remedy-grid{grid-template-columns:1fr;}}
+    .remedy-card { background:var(--cream);border-radius:14px;padding:1.1rem;border:1px solid #dde7de;animation:fadeUp 0.4s ease both; }
+    .remedy-card:nth-child(2){animation-delay:0.08s;}
+    .remedy-card:nth-child(3){animation-delay:0.16s;}
+    .remedy-card:nth-child(4){animation-delay:0.24s;}
+    .remedy-card-header { display:flex;align-items:center;gap:8px;margin-bottom:9px; }
+    .remedy-icon-sm { width:30px;height:30px;background:var(--green-deep);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0; }
+    .remedy-title { font-size:0.86rem;font-weight:700;color:var(--green-deep); }
+    .remedy-steps { list-style:none; }
+    .remedy-steps li { font-size:0.81rem;color:#555;line-height:1.5;padding-left:15px;position:relative;margin-bottom:5px; }
+    .remedy-steps li::before { content:'→';position:absolute;left:0;color:var(--green-fresh);font-size:0.73rem; }
+
+    /* MODEL STATUS */
+    .model-status {
+      position:fixed;bottom:22px;right:22px;
+      background:var(--green-deep);color:var(--cream);
+      padding:9px 16px;border-radius:50px;
+      font-size:0.8rem;font-weight:500;
+      display:flex;align-items:center;gap:8px;
+      z-index:100;box-shadow:0 4px 20px rgba(0,0,0,0.25);transition:opacity 0.4s;
+    }
+    .status-dot { width:8px;height:8px;border-radius:50%;background:var(--gold);animation:blink 1.2s infinite; }
+    .status-dot.ready { background:var(--green-light);animation:none; }
+    .status-dot.error { background:#f87171;animation:none; }
+
+    /* TIPS */
+    .tips-strip { position:relative;z-index:1;background:var(--green-deep);padding:3rem 1.5rem;margin-top:20px; }
+    .tips-strip h2 { font-family:'Playfair Display',serif;color:var(--cream);font-size:1.5rem;text-align:center;margin-bottom:1.8rem; }
+    .tips-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;max-width:860px;margin:0 auto; }
+    .tip-card { background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:1.3rem; }
+    .tip-emoji { font-size:1.5rem;margin-bottom:10px;display:block; }
+    .tip-card h4 { font-size:0.92rem;font-weight:700;color:var(--green-light);margin-bottom:6px; }
+    .tip-card p { font-size:0.8rem;color:rgba(245,240,232,0.65);line-height:1.55; }
+
+    /* FOOTER */
+    footer { position:relative;z-index:1;text-align:center;padding:1.8rem;font-size:0.8rem;color:var(--text-muted);border-top:1px solid #dde7de; }
+    footer strong { color:var(--green-fresh); }
+
+    @media(max-width:600px){
+      .preview-container.visible { flex-direction:column; }
+      .webcam-controls { flex-direction:column; }
+      .webcam-controls .btn { width:100%;justify-content:center; }
+      .captured-thumb.visible { flex-direction:column; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🌿</div>
+    <div class="logo-text">Agri<span>Pulse</span></div>
+  </div>
+  <nav>
+    <a href="#detect">Detect</a>
+    <a href="#tips">Tips</a>
+  </nav>
+</header>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-badge">🌱 AI-Powered Farming Assistant</div>
+  <h1>Detect Plant Diseases <em>Instantly</em> with AI</h1>
+  <p>Upload a leaf photo or use your camera — our trained AI identifies the disease and gives step-by-step treatment remedies.</p>
+</section>
+
+<!-- MAIN CARD -->
+<main class="main-card" id="detect">
+  <div class="card">
+
+    <!-- TABS -->
+    <div class="mode-tabs">
+      <button class="mode-tab active" id="tabUpload" onclick="switchTab('upload')">
+        <span class="tab-icon">📁</span> Upload Image
+      </button>
+      <button class="mode-tab" id="tabWebcam" onclick="switchTab('webcam')">
+        <span class="tab-icon">📷</span> Use Camera
+      </button>
+    </div>
+
+    <!-- UPLOAD PANEL -->
+    <div class="panel active" id="panelUpload">
+
+      <span class="section-label">Step 1 — Upload Leaf Image</span>
+
+      <div class="upload-zone" id="uploadZone">
+        <input type="file" id="imageUpload" accept="image/*" />
+        <div class="upload-icon">🔬</div>
+        <h3>Drop your leaf photo here</h3>
+        <p>or <strong>click to browse</strong> · JPG, PNG, WEBP supported</p>
+      </div>
+
+      <div class="preview-container" id="previewContainer">
+        <div class="preview-image-wrap">
+          <img id="previewImg" src="" alt="Leaf preview" />
+        </div>
+        <div class="preview-info">
+          <div class="preview-filename" id="previewName">—</div>
+          <div class="preview-meta" id="previewMeta">—</div>
+          <button class="btn btn-primary" id="analyzeUploadBtn">🔬 Analyze Disease</button>
+          <button class="btn btn-secondary" id="clearUploadBtn" style="margin-left:8px">✕ Clear</button>
+        </div>
+      </div>
+
+      <div class="loading-bar" id="loadingBarUpload">
+        <div class="loading-text" id="loadingTextUpload">Analyzing leaf pattern...</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFillUpload" style="width:0%"></div></div>
+      </div>
+      <div class="error-box" id="errorBoxUpload">⚠️ <span id="errorMsgUpload"></span></div>
+    </div>
+
+    <!-- WEBCAM PANEL -->
+    <div class="panel" id="panelWebcam">
+      <span class="section-label">Step 1 — Point Camera at Leaf</span>
+
+      <div class="webcam-container" id="webcamContainer">
+        <video id="webcamVideo" autoplay playsinline muted></video>
+        <canvas id="capturedCanvas"></canvas>
+        <div class="webcam-placeholder" id="webcamPlaceholder">
+          <span class="cam-icon">📷</span>
+          <span>Click "Start Camera" to begin</span>
+        </div>
+        <div class="scan-overlay scan-corners" id="scanOverlay">
+          <div class="scan-line"></div>
+        </div>
+      </div>
+
+      <div class="cam-status" id="camStatus">
+        <div class="cam-live-dot"></div> Camera live — point at leaf and press Capture
+      </div>
+
+      <div class="webcam-controls">
+        <button class="btn btn-green"      id="startCamBtn"  onclick="startCamera()">📷 Start Camera</button>
+        <button class="btn btn-primary"    id="captureBtn"   onclick="captureFrame()" style="display:none">⚡ Capture</button>
+        <button class="btn btn-secondary"  id="retakeBtn"    onclick="retakePhoto()"  style="display:none">🔄 Retake</button>
+        <button class="btn btn-secondary"  id="flipCamBtn"   onclick="flipCamera()"   style="display:none">🔃 Flip</button>
+        <button class="btn btn-danger"     id="stopCamBtn"   onclick="stopCamera()"   style="display:none">■ Stop</button>
+      </div>
+
+      <div class="captured-thumb" id="capturedThumb">
+        <div class="captured-thumb-img">
+          <img id="capturedThumbImg" src="" alt="Captured leaf" />
+        </div>
+        <div class="captured-thumb-info">
+          <div class="captured-label">📸 Frame Captured</div>
+          <div class="captured-meta" id="capturedMeta">Ready for analysis</div>
+          <button class="btn btn-primary" id="analyzeCamBtn">🔬 Analyze Disease</button>
+        </div>
+      </div>
+
+      <div class="loading-bar" id="loadingBarCam">
+        <div class="loading-text" id="loadingTextCam">Analyzing leaf pattern...</div>
+        <div class="progress-track"><div class="progress-fill" id="progressFillCam" style="width:0%"></div></div>
+      </div>
+      <div class="error-box" id="errorBoxCam">⚠️ <span id="errorMsgCam"></span></div>
+    </div>
+
+    <!-- RESULTS (shared) -->
+    <div class="results-section" id="resultsSection">
+      <div class="results-header">
+        <div class="results-title">
+          Analysis Results
+          <span class="source-tag" id="sourceTag">Upload</span>
+        </div>
+        <div class="confidence-pill" id="confidencePill">—% Confidence</div>
+      </div>
+
+      <!-- Low confidence warning -->
+      <div class="low-confidence-box" id="lowConfidenceBox">
+        <div class="lc-icon">⚠️</div>
+        <div class="lc-content">
+          <div class="lc-title">Low Confidence Detection</div>
+          <div class="lc-desc">The AI is not fully confident about this result. For a more accurate diagnosis, please try again with a <strong>clearer, well-lit photo</strong> of the affected leaf.</div>
+          <div class="lc-tips">
+            <span>📸 Tips:</span>
+            Make sure the leaf fills the frame · Use natural daylight · Avoid blur or shadows · Focus on the affected area
+          </div>
+        </div>
+      </div>
+
+      <div class="disease-card" id="diseaseCard">
+        <div class="disease-icon" id="diseaseIcon">🍃</div>
+        <div>
+          <div class="disease-name" id="diseaseName">—</div>
+          <div class="disease-latin" id="diseaseLatin">—</div>
+          <div id="severityBadge"></div>
+          <div class="disease-desc" id="diseaseDesc">—</div>
+        </div>
+      </div>
+
+      <div class="prob-label">Recommended Remedies</div>
+      <div class="remedy-grid" id="remedyGrid"></div>
+    </div>
+
+  </div>
+</main>
+
+<!-- TIPS -->
+<section class="tips-strip" id="tips">
+  <h2>Healthy Crop Tips</h2>
+  <div class="tips-grid">
+    <div class="tip-card"><span class="tip-emoji">💧</span><h4>Water Wisely</h4><p>Water at the base of plants early morning to reduce leaf moisture and prevent fungal spread.</p></div>
+    <div class="tip-card"><span class="tip-emoji">✂️</span><h4>Prune Regularly</h4><p>Remove infected leaves immediately and dispose away from the garden to stop contamination.</p></div>
+    <div class="tip-card"><span class="tip-emoji">🔄</span><h4>Rotate Crops</h4><p>Changing planting locations each season reduces soil-borne diseases and replenishes nutrients.</p></div>
+    <div class="tip-card"><span class="tip-emoji">🌬️</span><h4>Ensure Air Flow</h4><p>Proper plant spacing allows air circulation, reducing humidity that promotes disease growth.</p></div>
+  </div>
+</section>
+
+<footer>
+  <strong>AgriPulse</strong> · AI Farming Assistant · Powered by <strong>Teachable Machine</strong> + TensorFlow.js<br>
+  <small>Results are AI-based estimates. Always consult a local agronomist for critical decisions.</small>
+</footer>
+
+<div class="model-status" id="modelStatus">
+  <div class="status-dot" id="statusDot"></div>
+  <span id="statusText">Loading AI Model…</span>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<script>
+// ── REMEDY DATABASE ──────────────────────────────────────────
+// 10 Classes: Leaf Blight, Leaf Spot, Tomato Leaf Curl,
+// Tomato Fusarium Wilt, Banana Panama Wilt, Banana Sigatoka,
+// Banana Bunchy Top, Chilli Anthracnose, Chilli Powdery Mildew, Healthy
+const REMEDY_DB = {
+
+  // ── GENERAL ─────────────────────────────────────────────────
+  "leaf blight": {
+    severity:"high", icon:"🔴",
+    latin:"Xanthomonas oryzae / Helminthosporium spp.",
+    desc:"Leaf blight causes water-soaked lesions that rapidly turn brown and kill leaf tissue. Spreads quickly in warm, humid and waterlogged conditions and can devastate entire crops if not controlled early.",
+    remedies:[
+      {icon:"💊",title:"Chemical Control",steps:["Apply copper-based fungicide every 7–10 days","Use Mancozeb or Carbendazim as directed","Avoid spraying in direct midday sunlight","Rotate fungicide groups to prevent resistance"]},
+      {icon:"💧",title:"Irrigation Management",steps:["Reduce overhead irrigation immediately","Switch to drip or base-level watering","Ensure field drainage channels are clear","Do not irrigate in evenings — leaves must dry overnight"]},
+      {icon:"🌿",title:"Cultural Practices",steps:["Remove and burn all infected leaves promptly","Maintain recommended spacing between plants","Avoid walking through wet infected fields","Sterilize all tools with 10% bleach solution"]},
+      {icon:"🛡️",title:"Prevention",steps:["Use certified disease-resistant seed varieties","Apply balanced NPK — avoid excess nitrogen","Inspect crops at least twice a week","Keep field records to track outbreak patterns"]},
+    ]
+  },
+
+  "leaf spot": {
+    severity:"medium", icon:"🟡",
+    latin:"Cercospora spp. / Alternaria spp.",
+    desc:"Leaf spot appears as circular brown or black lesions, often with yellow halos. Caused by fungal pathogens that thrive in moist, humid environments. Early detection significantly improves control outcomes.",
+    remedies:[
+      {icon:"✂️",title:"Remove Infected Leaves",steps:["Prune spotted leaves as soon as spotted","Dispose in sealed bags — do not compost","Sterilize pruning tools between each plant","Check surrounding plants for early spread"]},
+      {icon:"🧴",title:"Fungicide Treatment",steps:["Apply Chlorothalonil or Azoxystrobin","Reapply every 7–14 days or after rain","Rotate fungicide classes to prevent resistance","Cover both upper and lower leaf surfaces"]},
+      {icon:"💧",title:"Moisture Control",steps:["Monitor leaf wetness — avoid prolonged dampness","Increase plant spacing for better airflow","Water in the morning so leaves dry by afternoon","Avoid wetting foliage during irrigation"]},
+      {icon:"🌱",title:"Soil & Nutrition",steps:["Ensure adequate potassium for plant immunity","Avoid excessive nitrogen fertilization","Test soil pH — maintain between 6.0 and 7.0","Apply organic compost to improve soil health"]},
+    ]
+  },
+
+  // ── TOMATO 🍅 ────────────────────────────────────────────────
+  "tomato leaf curl": {
+    severity:"high", icon:"🔴",
+    latin:"Tomato Leaf Curl Virus (ToLCV) — Begomovirus",
+    desc:"Tomato Leaf Curl is a viral disease transmitted by whiteflies. Leaves curl upward, turn yellow and plants become stunted. It spreads rapidly and can destroy an entire tomato crop if whitefly population is not controlled.",
+    remedies:[
+      {icon:"🦟",title:"Control Whiteflies",steps:["Spray Imidacloprid or Thiamethoxam to kill whiteflies","Use yellow sticky traps around the field","Spray Neem oil (5ml/L) weekly as organic option","Avoid planting near infected fields"]},
+      {icon:"🌿",title:"Remove Infected Plants",steps:["Uproot and burn severely infected plants immediately","Do not leave infected plants in the field","Wash hands after handling infected plants","Avoid replanting in same spot same season"]},
+      {icon:"🛡️",title:"Prevention",steps:["Use virus-free certified seedlings","Grow resistant varieties like Arka Rakshak","Cover nursery beds with insect-proof nets","Maintain 45–60 cm spacing between plants"]},
+      {icon:"💊",title:"Supportive Treatment",steps:["Spray micronutrients — zinc and boron","Apply potassium-rich fertilizer to boost immunity","Avoid excess nitrogen which attracts whiteflies","Remove and destroy crop debris after harvest"]},
+    ]
+  },
+
+  "tomato fusarium wilt": {
+    severity:"high", icon:"🔴",
+    latin:"Fusarium oxysporum f.sp. lycopersici",
+    desc:"Fusarium Wilt is a soil-borne fungal disease that blocks the water-conducting vessels of tomato plants. Leaves turn yellow from the bottom up, plants wilt during the day and the stem shows brown discoloration inside.",
+    remedies:[
+      {icon:"🌱",title:"Soil Treatment",steps:["Drench soil with Carbendazim 1g/L before planting","Apply Trichoderma viride to soil as biocontrol","Solarize soil by covering with clear plastic for 4–6 weeks","Avoid waterlogging — improve drainage immediately"]},
+      {icon:"🔄",title:"Crop Rotation",steps:["Do not grow tomato in same field for 3–4 years","Rotate with non-host crops like maize or onion","Avoid planting potato or brinjal — same family","Record field history to plan rotations properly"]},
+      {icon:"🌿",title:"Remove Infected Plants",steps:["Uproot wilted plants with roots completely","Do not compost infected material — burn it","Disinfect all tools with bleach after use","Mark infected areas to avoid next season"]},
+      {icon:"🛡️",title:"Prevention",steps:["Use Fusarium-resistant varieties like Arka Vikas","Treat seeds with Thiram 2g/kg before sowing","Maintain soil pH between 6.0–6.5","Apply well-decomposed organic compost to soil"]},
+    ]
+  },
+
+  // ── BANANA 🍌 ────────────────────────────────────────────────
+  "banana panama wilt": {
+    severity:"high", icon:"🔴",
+    latin:"Fusarium oxysporum f.sp. cubense (Foc)",
+    desc:"Panama Wilt is one of the most destructive banana diseases worldwide. The fungus attacks roots and blocks water flow, causing leaves to yellow and collapse from the outside inward. Internal stem shows red-brown discoloration. No cure once infected.",
+    remedies:[
+      {icon:"⚡",title:"Act Immediately",steps:["Uproot and destroy infected plants completely","Do not replant banana in same soil for 5–10 years","Quarantine the affected area from other plants","Report to local agriculture department if widespread"]},
+      {icon:"🌱",title:"Soil Management",steps:["Apply lime to raise soil pH above 7.0","Drench with Trichoderma-based biocontrol agents","Avoid moving soil from infected to healthy areas","Improve drainage — fungus thrives in waterlogged soil"]},
+      {icon:"🛡️",title:"Prevention",steps:["Plant only certified disease-free suckers","Use resistant varieties like FHIA-01 or Yangambi","Avoid wounding roots during cultivation","Disinfect tools with 10% bleach between plants"]},
+      {icon:"📋",title:"Long Term Management",steps:["Practice 10-year crop rotation in infected fields","Use tissue culture plants from certified labs","Monitor neighboring farms for early signs","Keep detailed field records of disease occurrence"]},
+    ]
+  },
+
+  "banana sigatoka": {
+    severity:"medium", icon:"🟡",
+    latin:"Mycosphaerella musicola / Mycosphaerella fijiensis",
+    desc:"Sigatoka (Yellow/Black) causes brown streaks and spots on banana leaves that expand and kill leaf tissue. Severely infected plants produce smaller, poor quality bunches. Spreads rapidly in humid, wet conditions.",
+    remedies:[
+      {icon:"✂️",title:"Remove Infected Leaves",steps:["Remove and destroy leaves with more than 50% infection","Cut leaves at the base — do not leave stumps","Bury or burn removed leaves away from plantation","Improve air circulation by removing excess leaves"]},
+      {icon:"💊",title:"Fungicide Spray",steps:["Apply Propiconazole or Mancozeb every 21 days","Spray both upper and lower leaf surfaces thoroughly","Rotate fungicides to prevent resistance","Spray early morning or evening — not in rain"]},
+      {icon:"🌿",title:"Cultural Practices",steps:["Maintain proper spacing — 2x2 meters minimum","Remove dried leaves regularly","Avoid over-irrigation — keep leaves dry","Apply mulch to prevent soil splash on leaves"]},
+      {icon:"🛡️",title:"Prevention",steps:["Plant resistant varieties where available","Apply balanced NPK fertilizer regularly","Ensure good drainage in the plantation","Monitor weekly especially during rainy season"]},
+    ]
+  },
+
+  "banana bunchy top": {
+    severity:"high", icon:"🔴",
+    latin:"Banana Bunchy Top Virus (BBTV) — Babuvirus",
+    desc:"Banana Bunchy Top is a devastating viral disease transmitted by banana aphids. Infected plants show dark green streaks on leaves, leaves become narrow and bunch together at the top. Plants never produce fruit and spread virus to healthy plants.",
+    remedies:[
+      {icon:"⚡",title:"Remove Infected Plants",steps:["Uproot and destroy ALL infected plants immediately","Inject stem with kerosene before uprooting to kill aphids","Do not replant banana for at least 6 months in same area","Never use suckers from infected plants"]},
+      {icon:"🦟",title:"Control Aphids",steps:["Spray Dimethoate or Imidacloprid to kill banana aphids","Apply Neem oil spray weekly as organic option","Install yellow sticky traps around plantation","Monitor undersides of leaves for aphid colonies"]},
+      {icon:"🛡️",title:"Prevention",steps:["Use only virus-free certified tissue culture plants","Inspect new planting material thoroughly","Establish new plantation away from infected areas","Create buffer zones between old and new plantations"]},
+      {icon:"📋",title:"Community Action",steps:["Inform neighboring farmers immediately","Coordinate mass roguing of infected plants in area","Contact agriculture extension for support","Report to plant quarantine authorities if widespread"]},
+    ]
+  },
+
+  // ── CHILLI 🌶️ ───────────────────────────────────────────────
+  "chilli anthracnose": {
+    severity:"high", icon:"🔴",
+    latin:"Colletotrichum capsici / Colletotrichum gloeosporioides",
+    desc:"Chilli Anthracnose causes dark, sunken, circular spots on fruits and leaves. The center of spots often turns orange or salmon-colored with fungal spores. Infected fruits rot and become unmarketable. Spreads rapidly in warm, wet conditions.",
+    remedies:[
+      {icon:"💊",title:"Fungicide Treatment",steps:["Spray Carbendazim 1g/L or Mancozeb 2g/L","Apply every 7–10 days during fruiting stage","Add Copper Oxychloride for broad protection","Spray before rain season for preventive action"]},
+      {icon:"✂️",title:"Remove Infected Material",steps:["Pick and destroy all infected fruits immediately","Remove infected plant parts and burn them","Never leave rotting fruits on the ground","Sanitize harvesting tools after each use"]},
+      {icon:"🌿",title:"Cultural Practices",steps:["Avoid overhead irrigation — use drip irrigation","Maintain wide spacing for good air circulation","Stake plants to keep fruits off the ground","Avoid working in field when plants are wet"]},
+      {icon:"🛡️",title:"Prevention",steps:["Treat seeds with Thiram or Captan before sowing","Use disease-free certified seedlings","Apply Trichoderma to soil before planting","Rotate crops — avoid chilli in same field consecutively"]},
+    ]
+  },
+
+  "chilli powdery mildew": {
+    severity:"medium", icon:"🟡",
+    latin:"Leveillula taurica / Oidiopsis taurica",
+    desc:"Chilli Powdery Mildew appears as white powdery patches on the upper surface of leaves. Infected leaves turn yellow and drop prematurely. Unlike most fungal diseases, it thrives in dry conditions with moderate humidity and can reduce yield significantly.",
+    remedies:[
+      {icon:"🧴",title:"Organic Spray",steps:["Mix baking soda 5g + neem oil 5ml in 1L water","Spray on affected leaves every 5–7 days","Diluted milk spray (1:9 ratio) also effective","Apply in early morning for best results"]},
+      {icon:"💊",title:"Chemical Control",steps:["Spray Hexaconazole or Dinocap fungicide","Apply Wettable Sulphur 2g/L as effective option","Repeat every 10–14 days until controlled","Avoid spraying in temperatures above 35°C"]},
+      {icon:"☀️",title:"Improve Conditions",steps:["Prune overcrowded branches for better airflow","Ensure plants get adequate sunlight","Avoid excess nitrogen fertilization","Remove and destroy heavily infected leaves"]},
+      {icon:"🛡️",title:"Prevention",steps:["Plant resistant varieties where available","Maintain proper plant spacing","Avoid water stress — keep soil evenly moist","Monitor regularly especially in dry weather"]},
+    ]
+  },
+
+  // ── HEALTHY ✅ ───────────────────────────────────────────────
+  "healthy": {
+    severity:"healthy", icon:"✅",
+    latin:"No pathogen detected",
+    desc:"Your plant appears perfectly healthy! No signs of disease were detected. Continue your current care practices and monitor regularly to keep your crops in great condition.",
+    remedies:[
+      {icon:"💧",title:"Maintain Watering",steps:["Keep consistent watering schedule","Water at base of plants — avoid wetting leaves","Water deeply but infrequently","Check soil moisture before each watering"]},
+      {icon:"🌱",title:"Fertilize Regularly",steps:["Apply balanced NPK fertilizer monthly","Use organic compost for long-term soil health","Test soil nutrients every season","Avoid over-fertilizing — can attract pests"]},
+      {icon:"🔍",title:"Monitor Weekly",steps:["Check leaves weekly for early disease signs","Inspect undersides of leaves too","Look for unusual discoloration or spots","Act immediately if any symptoms appear"]},
+      {icon:"🌞",title:"Optimal Care",steps:["Ensure adequate sunlight for your crop","Maintain proper drainage to avoid waterlogging","Keep tools clean and sanitized","Remove weeds that can harbor diseases"]},
+    ]
+  },
+
+};
+
+function getRemedy(className) {
+  const key = className.toLowerCase().trim();
+  return REMEDY_DB[key] || {
+    severity:"low", icon:"🍃",
+    latin:"Unknown pathogen",
+    desc:`"${className}" detected. Consult your local agriculture extension for specific guidance.`,
+    remedies:[
+      {icon:"🔍",title:"Consult Expert",steps:["Contact local agronomist","Bring leaf sample for lab testing","Check regional disease bulletins"]},
+      {icon:"🌿",title:"General Care",steps:["Remove visibly infected plant parts","Improve ventilation around plants","Avoid excessive fertilizing"]},
+      {icon:"💊",title:"Broad Treatment",steps:["Apply general-purpose fungicide","Follow product label guidelines","Monitor for improvement in 7 days"]},
+      {icon:"📋",title:"Record Keeping",steps:["Photo-document the symptoms","Note weather and watering history","Track spread across plants"]},
+    ]
+  };
+}
+
+// ── MODEL ────────────────────────────────────────────────────
+let model = null;
+const statusDot  = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+
+async function loadModel() {
+  try {
+    model = await tmImage.load(
+      "https://teachablemachine.withgoogle.com/models/3M9ChApGf/model.json",
+      "https://teachablemachine.withgoogle.com/models/3M9ChApGf/metadata.json"
+    );
+    statusDot.classList.add('ready');
+    statusText.textContent = "Model Ready ✓";
+
+    setTimeout(()=>{ document.getElementById('modelStatus').style.opacity='0.5'; }, 3000);
+  } catch(e) {
+    statusDot.classList.add('error');
+    statusText.textContent = "Model failed to load — check console";
+  }
+}
+loadModel();
+
+// ── TABS ─────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('tabUpload').classList.toggle('active', tab==='upload');
+  document.getElementById('tabWebcam').classList.toggle('active', tab==='webcam');
+  document.getElementById('panelUpload').classList.toggle('active', tab==='upload');
+  document.getElementById('panelWebcam').classList.toggle('active', tab==='webcam');
+  document.getElementById('resultsSection').classList.remove('visible');
+  if (tab==='upload') stopCamera();
+}
+
+// ── UPLOAD ───────────────────────────────────────────────────
+const imageUpload       = document.getElementById('imageUpload');
+const previewImg        = document.getElementById('previewImg');
+const previewContainer  = document.getElementById('previewContainer');
+const uploadZone        = document.getElementById('uploadZone');
+
+uploadZone.addEventListener('dragover', e=>{e.preventDefault();uploadZone.classList.add('drag-over');});
+uploadZone.addEventListener('dragleave', ()=>uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e=>{
+  e.preventDefault(); uploadZone.classList.remove('drag-over');
+  const f=e.dataTransfer.files[0];
+  if(f && f.type.startsWith('image/')) handleUploadFile(f);
+});
+imageUpload.addEventListener('change', e=>{ if(e.target.files[0]) handleUploadFile(e.target.files[0]); });
+
+function handleUploadFile(file) {
+  previewImg.src = URL.createObjectURL(file);
+  document.getElementById('previewName').textContent = file.name;
+  document.getElementById('previewMeta').textContent = `${(file.size/1024).toFixed(1)} KB · ${file.type}`;
+  previewContainer.classList.add('visible');
+  document.getElementById('resultsSection').classList.remove('visible');
+  document.getElementById('errorBoxUpload').classList.remove('visible');
+}
+
+document.getElementById('clearUploadBtn').addEventListener('click', ()=>{
+  previewImg.src=''; previewContainer.classList.remove('visible');
+  document.getElementById('resultsSection').classList.remove('visible');
+  document.getElementById('errorBoxUpload').classList.remove('visible');
+  imageUpload.value='';
+});
+
+document.getElementById('analyzeUploadBtn').addEventListener('click', async ()=>{
+  if(!previewImg.src || previewImg.src===window.location.href) return;
+  await runAnalysis(previewImg, 'upload',
+    document.getElementById('analyzeUploadBtn'),
+    document.getElementById('loadingBarUpload'),
+    document.getElementById('loadingTextUpload'),
+    document.getElementById('progressFillUpload'),
+    document.getElementById('errorBoxUpload'),
+    document.getElementById('errorMsgUpload'));
+});
+
+// ── WEBCAM ───────────────────────────────────────────────────
+let stream = null;
+let facingMode = 'environment';
+let capturedDataURL = null;
+
+const webcamVideo       = document.getElementById('webcamVideo');
+const capturedCanvas    = document.getElementById('capturedCanvas');
+const webcamPlaceholder = document.getElementById('webcamPlaceholder');
+const scanOverlay       = document.getElementById('scanOverlay');
+const camStatus         = document.getElementById('camStatus');
+const capturedThumb     = document.getElementById('capturedThumb');
+const capturedThumbImg  = document.getElementById('capturedThumbImg');
+
+async function startCamera() {
+  document.getElementById('errorBoxCam').classList.remove('visible');
+  capturedThumb.classList.remove('visible');
+  capturedCanvas.style.display = 'none';
+  try {
+    if(stream) stream.getTracks().forEach(t=>t.stop());
+    stream = await navigator.mediaDevices.getUserMedia({
+      video:{ facingMode, width:{ideal:1280}, height:{ideal:720} }, audio:false
+    });
+    webcamVideo.srcObject = stream;
+    webcamVideo.style.display = 'block';
+    webcamPlaceholder.style.display = 'none';
+    scanOverlay.classList.add('active');
+    camStatus.style.display = 'flex';
+    show('startCamBtn',false); show('captureBtn',true);
+    show('stopCamBtn',true);   show('flipCamBtn',true);
+    show('retakeBtn',false);
+  } catch(err) {
+    const msg = err.name==='NotAllowedError'
+      ? 'Camera permission denied. Allow camera access in browser settings.'
+      : 'Could not access camera: ' + err.message;
+    document.getElementById('errorMsgCam').textContent = msg;
+    document.getElementById('errorBoxCam').classList.add('visible');
+  }
+}
+
+function stopCamera() {
+  if(stream){ stream.getTracks().forEach(t=>t.stop()); stream=null; }
+  webcamVideo.srcObject = null;
+  webcamVideo.style.display = 'none';
+  capturedCanvas.style.display = 'none';
+  webcamPlaceholder.style.display = 'flex';
+  scanOverlay.classList.remove('active');
+  camStatus.style.display = 'none';
+  show('startCamBtn',true);  show('captureBtn',false);
+  show('stopCamBtn',false);  show('flipCamBtn',false);
+  show('retakeBtn',false);
+  capturedThumb.classList.remove('visible');
+  capturedDataURL = null;
+}
+
+function captureFrame() {
+  if(!stream) return;
+  const w = webcamVideo.videoWidth  || 640;
+  const h = webcamVideo.videoHeight || 480;
+  capturedCanvas.width=w; capturedCanvas.height=h;
+  capturedCanvas.getContext('2d').drawImage(webcamVideo,0,0,w,h);
+  capturedDataURL = capturedCanvas.toDataURL('image/jpeg',0.92);
+
+  capturedCanvas.style.display = 'block';
+  webcamVideo.style.display = 'none';
+  scanOverlay.classList.remove('active');
+
+  show('captureBtn',false); show('retakeBtn',true); show('flipCamBtn',false);
+
+  capturedThumbImg.src = capturedDataURL;
+  document.getElementById('capturedMeta').textContent = `${w} × ${h} px · JPEG`;
+  capturedThumb.classList.add('visible');
+  document.getElementById('resultsSection').classList.remove('visible');
+  document.getElementById('errorBoxCam').classList.remove('visible');
+}
+
+function retakePhoto() {
+  capturedCanvas.style.display='none';
+  webcamVideo.style.display='block';
+  scanOverlay.classList.add('active');
+  show('captureBtn',true); show('retakeBtn',false); show('flipCamBtn',true);
+  capturedThumb.classList.remove('visible');
+  capturedDataURL=null;
+  document.getElementById('resultsSection').classList.remove('visible');
+}
+
+async function flipCamera() {
+  facingMode = facingMode==='environment'?'user':'environment';
+  await startCamera();
+}
+
+document.getElementById('analyzeCamBtn').addEventListener('click', async ()=>{
+  if(!capturedDataURL) return;
+  const img = new Image();
+  img.src = capturedDataURL;
+  await new Promise(res=>{img.onload=res;});
+  await runAnalysis(img, 'camera',
+    document.getElementById('analyzeCamBtn'),
+    document.getElementById('loadingBarCam'),
+    document.getElementById('loadingTextCam'),
+    document.getElementById('progressFillCam'),
+    document.getElementById('errorBoxCam'),
+    document.getElementById('errorMsgCam'));
+});
+
+// ── SHARED ANALYSIS ──────────────────────────────────────────
+async function runAnalysis(imageEl, source, btn, loadingBar, loadingTextEl, progressFill, errorBox, errorMsgEl) {
+  if(!model){
+    errorMsgEl.textContent="AI model not loaded. Please refresh and try again.";
+    errorBox.classList.add('visible'); return;
+  }
+  btn.disabled=true;
+  loadingBar.classList.add('visible');
+  document.getElementById('resultsSection').classList.remove('visible');
+  errorBox.classList.remove('visible');
+
+  const steps=[[20,"Loading image..."],[45,"Extracting leaf features..."],[70,"Running AI classification..."],[90,"Preparing results..."]];
+  for(const [pct,msg] of steps){
+    await delay(320);
+    progressFill.style.width=pct+'%';
+    loadingTextEl.textContent=msg;
+  }
+  try {
+    const predictions = await model.predict(imageEl);
+    predictions.sort((a,b)=>b.probability-a.probability);
+    progressFill.style.width='100%';
+    loadingTextEl.textContent="Done!";
+    await delay(280);
+    renderResults(predictions, source);
+  } catch(err) {
+    errorMsgEl.textContent="Analysis failed: "+err.message;
+    errorBox.classList.add('visible');
+  } finally {
+    btn.disabled=false;
+    loadingBar.classList.remove('visible');
+    progressFill.style.width='0%';
+  }
+}
+
+// ── RENDER RESULTS ───────────────────────────────────────────
+function renderResults(predictions, source) {
+  const top = predictions[0];
+  const remedy = getRemedy(top.className);
+  const pct = (top.probability*100).toFixed(1);
+
+  document.getElementById('confidencePill').textContent=`${pct}% Confidence`;
+  document.getElementById('sourceTag').textContent = source==='camera'?'📷 Camera':'📁 Upload';
+
+  // Low confidence warning — show if below 60%
+  const lcBox = document.getElementById('lowConfidenceBox');
+  if (top.probability < 0.60) {
+    lcBox.classList.add('visible');
+    // Also dim the confidence pill to orange
+    document.getElementById('confidencePill').style.background = 'rgba(245,158,11,0.15)';
+    document.getElementById('confidencePill').style.color = '#92400e';
+    document.getElementById('confidencePill').style.borderColor = 'rgba(245,158,11,0.4)';
+  } else {
+    lcBox.classList.remove('visible');
+    document.getElementById('confidencePill').style.background = '';
+    document.getElementById('confidencePill').style.color = '';
+    document.getElementById('confidencePill').style.borderColor = '';
+  }
+
+  const card=document.getElementById('diseaseCard');
+  card.className=`disease-card severity-${remedy.severity}`;
+  document.getElementById('diseaseIcon').textContent=remedy.icon;
+  document.getElementById('diseaseName').textContent=top.className;
+  document.getElementById('diseaseLatin').textContent=remedy.latin;
+  document.getElementById('diseaseDesc').textContent=remedy.desc;
+
+  const bL={high:'🔴 High Severity',medium:'🟡 Moderate Severity',low:'🟢 Low Severity',healthy:'✅ Healthy Plant'};
+  const bC={high:'badge-high',medium:'badge-medium',low:'badge-low',healthy:'badge-healthy'};
+  document.getElementById('severityBadge').innerHTML=`<span class="severity-badge ${bC[remedy.severity]}">${bL[remedy.severity]}</span>`;
+
+  const rg=document.getElementById('remedyGrid');
+  rg.innerHTML='';
+  remedy.remedies.forEach(r=>{
+    rg.innerHTML+=`
+      <div class="remedy-card">
+        <div class="remedy-card-header">
+          <div class="remedy-icon-sm">${r.icon}</div>
+          <div class="remedy-title">${r.title}</div>
+        </div>
+        <ul class="remedy-steps">${r.steps.map(s=>`<li>${s}</li>`).join('')}</ul>
+      </div>`;
+  });
+
+  const rs=document.getElementById('resultsSection');
+  rs.classList.add('visible');
+  rs.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function show(id, visible) {
+  document.getElementById(id).style.display = visible ? 'inline-flex' : 'none';
+}
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+</script>
+</body>
+</html>
