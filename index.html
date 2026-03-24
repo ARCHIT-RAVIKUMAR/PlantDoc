@@ -37,12 +37,13 @@
 
     /* HEADER */
     header {
-      position: relative; z-index: 10;
+      position: relative; z-index: 100;
       background: var(--green-deep);
       padding: 0 2rem;
       display: flex; align-items: center; justify-content: space-between;
       height: 70px;
       box-shadow: 0 2px 20px rgba(0,0,0,0.3);
+      overflow: visible;
     }
     .logo { display: flex; align-items: center; gap: 12px; }
     .logo-icon {
@@ -57,6 +58,12 @@
       margin-left: 2rem; font-size: 0.9rem; font-weight: 500; transition: color 0.2s;
     }
     nav a:hover { color: var(--green-light); }
+    #siteLang option {
+      background: var(--green-deep);
+      color: #fff;
+      font-size: 0.85rem;
+      padding: 6px;
+    }
 
     /* HERO */
     .hero { position: relative; z-index: 1; text-align: center; padding: 70px 2rem 50px; }
@@ -353,16 +360,23 @@
     <div class="logo-text">Agri<span>Fury</span></div>
   </div>
   <nav>
-    <a href="#detect">Detect</a>
-    <a href="#tips">Tips</a>
+    <a href="#detect" id="navDetect">Detect</a>
+    <a href="#tips" id="navTips">Tips</a>
+    <select id="siteLang" onchange="changeSiteLang()" title="Select Language" style="background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.3);color:#fff;border-radius:6px;padding:4px 8px;font-size:0.82rem;cursor:pointer;font-family:'DM Sans',sans-serif;margin-left:1rem;outline:none;">
+      <option value="en">🇬🇧 English</option>
+      <option value="ml">🇮🇳 Malayalam</option>
+      <option value="hi">🇮🇳 Hindi</option>
+      <option value="ta">🇮🇳 Tamil</option>
+      <option value="te">🇮🇳 Telugu</option>
+    </select>
   </nav>
 </header>
 
 <!-- HERO -->
 <section class="hero">
-  <div class="hero-badge">🌱 AI-Powered Farming Assistant</div>
-  <h1>Detect Plant Diseases <em>Instantly</em> with AI</h1>
-  <p>Upload a leaf photo or use your camera — our trained AI identifies the disease and gives step-by-step treatment remedies.</p>
+  <div class="hero-badge" id="heroBadge">🌱 AI-Powered Farming Assistant</div>
+  <h1 id="heroTitle">Detect Plant Diseases <em>Instantly</em> with AI</h1>
+  <p id="heroDesc">Upload a leaf photo or use your camera — our trained AI identifies the disease and gives step-by-step treatment remedies.</p>
 </section>
 
 <!-- MAIN CARD -->
@@ -1016,6 +1030,28 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   }
   .chat-close:hover { color: #fff; }
 
+  /* Language selector */
+  #chatLang {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: #fff; border-radius: 6px;
+    padding: 3px 6px; font-size: 0.78rem;
+    cursor: pointer; outline: none;
+    font-family: 'DM Sans', sans-serif;
+  }
+  #chatLang option { background: var(--green-deep); color: #fff; }
+
+  /* Speaker toggle button */
+  .chat-speaker-btn {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.3);
+    border-radius: 6px; padding: 3px 7px;
+    font-size: 0.9rem; cursor: pointer;
+    transition: all 0.2s; color: #fff;
+  }
+  .chat-speaker-btn:hover { background: rgba(255,255,255,0.25); }
+  .chat-speaker-btn.muted { background: rgba(239,68,68,0.3); border-color: rgba(239,68,68,0.5); }
+
   /* Chat messages */
   .chat-messages {
     flex: 1; overflow-y: auto; padding: 14px;
@@ -1097,6 +1133,24 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   }
   .chat-send:hover { background: var(--green-mid); transform: scale(1.05); }
   .chat-send:disabled { background: #aaa; cursor: not-allowed; transform: none; }
+
+  /* Mic button */
+  .chat-mic {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: #f0f4f0; border: 1.5px solid #c8d9ca;
+    font-size: 1rem; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: all 0.2s; flex-shrink: 0;
+  }
+  .chat-mic:hover { background: #e0ece0; }
+  .chat-mic.listening {
+    background: #fee2e2; border-color: #ef4444;
+    animation: micPulse 1s ease-in-out infinite;
+  }
+  @keyframes micPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(239,68,68,0.4); }
+    50% { box-shadow: 0 0 0 8px rgba(239,68,68,0); }
+  }
 </style>
 
 <!-- Chat bubble -->
@@ -1116,11 +1170,19 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
         <div class="chat-online-dot"></div> Ask me anything about farming!
       </div>
     </div>
+    <select id="chatLang" onchange="changeChatLang()" title="Select Language">
+      <option value="en">🇬🇧 EN</option>
+      <option value="ml">🇮🇳 ML</option>
+      <option value="hi">🇮🇳 HI</option>
+      <option value="ta">🇮🇳 TA</option>
+      <option value="te">🇮🇳 TE</option>
+    </select>
+    <button class="chat-speaker-btn" id="speakerBtn" onclick="toggleSpeaker()" title="Toggle voice output">🔊</button>
     <button class="chat-close" onclick="toggleChat()">✕</button>
   </div>
 
   <div class="chat-messages" id="chatMessages">
-    <div class="msg bot">
+    <div class="msg bot" id="chatWelcomeMsg">
       👋 Hi! I'm your AgriFury farming assistant. Ask me anything about plant diseases, remedies, crop care or farming tips!
     </div>
   </div>
@@ -1133,6 +1195,7 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   </div>
 
   <div class="chat-input-area">
+    <button class="chat-mic" id="chatMicBtn" onclick="toggleVoiceInput()" title="Speak your question">🎤</button>
     <input class="chat-input" id="chatInput" type="text" placeholder="Ask a farming question..." />
     <button class="chat-send" id="chatSendBtn" onclick="sendChat()">➤</button>
   </div>
@@ -1142,6 +1205,25 @@ function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
 <script>
 // ── CHATBOT (via Cloudflare Worker) ──────────────────────────
 const WORKER_URL = 'https://agrifury-chat.arlaptop2024.workers.dev/';
+
+// Language settings
+const LANG_NAMES = {
+  en: 'English', ml: 'Malayalam', hi: 'Hindi', ta: 'Tamil', te: 'Telugu'
+};
+const WELCOME_MSGS = {
+  en: '👋 Hi! I\'m your AgriFury farming assistant. Ask me anything about plant diseases, remedies, crop care or farming tips!',
+  ml: '👋 നമസ്കാരം! ഞാൻ AgriFury കൃഷി സഹായി ആണ്. സസ്യ രോഗങ്ങൾ, പ്രതിവിധികൾ, വിള പരിചരണം എന്നിവയെ കുറിച്ച് ചോദിക്കൂ!',
+  hi: '👋 नमस्ते! मैं आपका AgriFury कृषि सहायक हूँ। पौधों की बीमारियों, उपचार और फसल देखभाल के बारे में पूछें!',
+  ta: '👋 வணக்கம்! நான் உங்கள் AgriFury வேளாண் உதவியாளர். தாவர நோய்கள், தீர்வுகள், பயிர் பராமரிப்பு பற்றி கேளுங்கள்!',
+  te: '👋 నమస్కారం! నేను మీ AgriFury వ్యవసాయ సహాయకుడిని. మొక్కల వ్యాధులు, నివారణలు, పంట సంరక్షణ గురించి అడగండి!'
+};
+const PLACEHOLDERS = {
+  en: 'Ask a farming question...',
+  ml: 'കൃഷി ചോദ്യം ചോദിക്കൂ...',
+  hi: 'कृषि प्रश्न पूछें...',
+  ta: 'வேளாண் கேள்வி கேளுங்கள்...',
+  te: 'వ్యవసాయ ప్రశ్న అడగండి...'
+};
 
 const SYSTEM_PROMPT = `You are AgriFury Assistant, an expert AI farming assistant specializing in plant diseases, crop care, and agriculture — especially for Indian farmers in Kerala and South India.
 
@@ -1160,10 +1242,26 @@ Keep answers:
 - Specific with product names when possible
 - Always mention safety precautions for chemicals
 
-If asked something unrelated to farming, politely redirect to farming topics.`;
+If asked something unrelated to farming, politely redirect to farming topics.
+IMPORTANT: Always reply in {LANGUAGE}. Even if the user writes in another language, respond in {LANGUAGE} only.`;
 
 let chatHistory = [];
 let chatOpen = false;
+let currentLang = 'en';
+
+function getSystemPrompt() {
+  return SYSTEM_PROMPT.replace(/{LANGUAGE}/g, LANG_NAMES[currentLang]);
+}
+
+function changeChatLang() {
+  currentLang = document.getElementById('chatLang').value;
+  // Update welcome message
+  document.getElementById('chatWelcomeMsg').textContent = WELCOME_MSGS[currentLang];
+  // Update input placeholder
+  document.getElementById('chatInput').placeholder = PLACEHOLDERS[currentLang];
+  // Reset history so new language takes effect
+  chatHistory = [];
+}
 
 function toggleChat() {
   chatOpen = !chatOpen;
@@ -1193,11 +1291,8 @@ async function sendChat() {
   addMessage(text, 'user');
   const typingId = addTyping();
 
-  // First message includes system prompt, follow-ups use history
-  const userPart = chatHistory.length === 0
-    ? SYSTEM_PROMPT + '\n\nFarmer question: ' + text
-    : text;
-
+  // All messages go as plain user text — system prompt sent separately to Worker
+  const userPart = text;
   const contents = [...chatHistory, { role: 'user', parts: [{ text: userPart }] }];
 
   try {
@@ -1205,6 +1300,7 @@ async function sendChat() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
+        systemPrompt: getSystemPrompt(),
         contents,
         generationConfig: { maxOutputTokens: 300, temperature: 0.7 }
       })
@@ -1225,8 +1321,16 @@ async function sendChat() {
       if (chatHistory.length > 16) chatHistory = chatHistory.slice(-16);
 
     } else {
-      console.error('Worker response:', JSON.stringify(data));
-      addMessage("Sorry, I couldn't get a response. Please try again!", 'bot');
+      // Show exact error from Gemini
+      const errMsg = data?.error?.message || data?.error?.status || JSON.stringify(data);
+      console.error('Worker response:', errMsg);
+      if (errMsg.includes('quota') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+        addMessage("⚠️ Daily limit reached. Please try again tomorrow or check your API quota.", 'bot');
+      } else if (errMsg.includes('API_KEY') || errMsg.includes('invalid')) {
+        addMessage("⚠️ API key issue. Please check your Gemini API key.", 'bot');
+      } else {
+        addMessage("Sorry, I couldn't get a response. Error: " + errMsg, 'bot');
+      }
     }
 
   } catch (err) {
@@ -1246,6 +1350,8 @@ function addMessage(text, type) {
   div.textContent = text;
   msgs.appendChild(div);
   msgs.scrollTop = msgs.scrollHeight;
+  // Speak bot replies automatically
+  if (type === 'bot') speakReply(text);
 }
 
 function addTyping() {
@@ -1259,6 +1365,323 @@ function addTyping() {
 function removeTyping(id) {
   const el = document.getElementById(id);
   if (el) el.remove();
+}
+
+// ── SITE TRANSLATION ─────────────────────────────────────────
+const TRANSLATIONS = {
+  en: {
+    navDetect: 'Detect', navTips: 'Tips',
+    heroBadge: '🌱 AI-Powered Farming Assistant',
+    heroTitle: 'Detect Plant Diseases <em>Instantly</em> with AI',
+    heroDesc: 'Upload a leaf photo or use your camera — our trained AI identifies the disease and gives step-by-step treatment remedies.',
+    tabUpload: '📁 Upload Image', tabWebcam: '📷 Use Camera',
+    uploadLabel: 'Step 1 — Upload Leaf Image',
+    uploadH3: 'Drop your leaf photo here',
+    uploadP: 'or <strong>click to browse</strong> · JPG, PNG, WEBP supported',
+    analyzeUploadBtn: '🔬 Analyze Disease', clearUploadBtn: '✕ Clear',
+    camLabel: 'Step 1 — Point Camera at Leaf',
+    camPlaceholder: 'Click "Start Camera" to begin',
+    camStatus: 'Camera live — point at leaf and press Capture',
+    startCamBtn: '📷 Start Camera', captureBtn: '⚡ Capture',
+    retakeBtn: '🔄 Retake', flipCamBtn: '🔃 Flip', stopCamBtn: '■ Stop',
+    capturedLabel: '📸 Frame Captured', capturedMeta: 'Ready for analysis',
+    analyzeCamBtn: '🔬 Analyze Disease',
+    resultsTitle: 'Analysis Results',
+    remediesLabel: 'Recommended Remedies',
+    lcTitle: 'Low Confidence Detection',
+    lcDesc: 'The AI is not fully confident about this result. For a more accurate diagnosis, please try again with a <strong>clearer, well-lit photo</strong> of the affected leaf.',
+    lcTips: '📸 Tips: Make sure the leaf fills the frame · Use natural daylight · Avoid blur or shadows · Focus on the affected area',
+    tipsTitle: 'Healthy Crop Tips',
+    tip1Title: 'Water Wisely', tip1Desc: 'Water at the base of plants early morning to reduce leaf moisture and prevent fungal spread.',
+    tip2Title: 'Prune Regularly', tip2Desc: 'Remove infected leaves immediately and dispose away from the garden to stop contamination.',
+    tip3Title: 'Rotate Crops', tip3Desc: 'Changing planting locations each season reduces soil-borne diseases and replenishes nutrients.',
+    tip4Title: 'Ensure Air Flow', tip4Desc: 'Proper plant spacing allows air circulation, reducing humidity that promotes disease growth.',
+    askAI: 'Ask AI',
+  },
+  ml: {
+    navDetect: 'കണ്ടെത്തൽ', navTips: 'നുറുങ്ങുകൾ',
+    heroBadge: '🌱 AI കൃഷി സഹായി',
+    heroTitle: 'സസ്യ രോഗങ്ങൾ <em>ഉടനടി</em> കണ്ടെത്തൂ',
+    heroDesc: 'ഒരു ഇല ഫോട്ടോ അപ്‌ലോഡ് ചെയ്യൂ അല്ലെങ്കിൽ ക്യാമറ ഉപയോഗിക്കൂ — നമ്മുടെ AI രോഗം കണ്ടെത്തി ചികിത്സ നൽകും.',
+    tabUpload: '📁 ചിത്രം അപ്‌ലോഡ്', tabWebcam: '📷 ക്യാമറ ഉപയോഗിക്കൂ',
+    uploadLabel: 'ഘട്ടം 1 — ഇല ചിത്രം അപ്‌ലോഡ് ചെയ്യൂ',
+    uploadH3: 'ഇല ഫോട്ടോ ഇവിടെ ഇടൂ',
+    uploadP: 'അല്ലെങ്കിൽ <strong>ബ്രൗസ് ചെയ്യൂ</strong> · JPG, PNG, WEBP',
+    analyzeUploadBtn: '🔬 രോഗം വിശകലനം', clearUploadBtn: '✕ മായ്ക്കൂ',
+    camLabel: 'ഘട്ടം 1 — ക്യാമറ ഇലയിൽ ചൂണ്ടൂ',
+    camPlaceholder: '"ക്യാമറ ആരംഭിക്കൂ" ക്ലിക്ക് ചെയ്യൂ',
+    camStatus: 'ക്യാമറ ലൈവ് — ഇലയിൽ ചൂണ്ടി ക്യാപ്ചർ അമർത്തൂ',
+    startCamBtn: '📷 ക്യാമറ ആരംഭിക്കൂ', captureBtn: '⚡ ക്യാപ്ചർ',
+    retakeBtn: '🔄 വീണ്ടും', flipCamBtn: '🔃 മറിക്കൂ', stopCamBtn: '■ നിർത്തൂ',
+    capturedLabel: '📸 ചിത്രം ലഭിച്ചു', capturedMeta: 'വിശകലനത്തിന് തയ്യാർ',
+    analyzeCamBtn: '🔬 രോഗം വിശകലനം',
+    resultsTitle: 'വിശകലന ഫലങ്ങൾ',
+    remediesLabel: 'ശുപാർശ ചെയ്ത പ്രതിവിധികൾ',
+    lcTitle: 'കുറഞ്ഞ ആത്മവിശ്വാസം',
+    lcDesc: 'AI ഈ ഫലത്തിൽ പൂർണ്ണ ഉറപ്പില്ല. കൂടുതൽ കൃത്യത ലഭിക്കാൻ <strong>വ്യക്തമായ, നന്നായി പ്രകാശിക്കുന്ന ഫോട്ടോ</strong> ഉപയോഗിക്കൂ.',
+    lcTips: '📸 നുറുങ്ങ്: ഇല ഫ്രേം നിറയട്ടെ · പ്രകൃതി വെളിച്ചം ഉപയോഗിക്കൂ · മങ്ങൽ ഒഴിവാക്കൂ',
+    tipsTitle: 'ആരോഗ്യകരമായ വിള നുറുങ്ങുകൾ',
+    tip1Title: 'ബുദ്ധിപൂർവ്വം നനയ്ക്കൂ', tip1Desc: 'രാവിലെ ചുവട്ടിൽ നനയ്ക്കൂ — ഇലയിൽ ഈർപ്പം കുറയ്ക്കാൻ.',
+    tip2Title: 'പതിവായി വെട്ടൂ', tip2Desc: 'രോഗബാധിത ഇലകൾ ഉടനടി നീക്കം ചെയ്യൂ.',
+    tip3Title: 'വിള മാറ്റൂ', tip3Desc: 'ഓരോ സീസണിലും ഇടം മാറ്റി നടൂ — മണ്ണ് ജന്യ രോഗം കുറയ്ക്കൂ.',
+    tip4Title: 'വായു സഞ്ചാരം ഉറപ്പാക്കൂ', tip4Desc: 'ചെടികൾ തമ്മിൽ ദൂരം പാലിക്കൂ — ഈർപ്പം കുറയ്ക്കൂ.',
+    askAI: 'AI യോട് ചോദിക്കൂ',
+  },
+  hi: {
+    navDetect: 'पहचानें', navTips: 'सुझाव',
+    heroBadge: '🌱 AI कृषि सहायक',
+    heroTitle: 'पौधों की बीमारियाँ <em>तुरंत</em> पहचानें',
+    heroDesc: 'पत्ती की फोटो अपलोड करें या कैमरा उपयोग करें — हमारा AI बीमारी पहचानकर उपचार बताएगा।',
+    tabUpload: '📁 फोटो अपलोड', tabWebcam: '📷 कैमरा उपयोग',
+    uploadLabel: 'चरण 1 — पत्ती की फोटो अपलोड करें',
+    uploadH3: 'यहाँ पत्ती की फोटो छोड़ें',
+    uploadP: 'या <strong>ब्राउज़ करें</strong> · JPG, PNG, WEBP',
+    analyzeUploadBtn: '🔬 बीमारी विश्लेषण', clearUploadBtn: '✕ हटाएं',
+    camLabel: 'चरण 1 — कैमरा पत्ती पर लगाएं',
+    camPlaceholder: '"कैमरा शुरू करें" पर क्लिक करें',
+    camStatus: 'कैमरा लाइव — पत्ती पर लगाएं और कैप्चर दबाएं',
+    startCamBtn: '📷 कैमरा शुरू', captureBtn: '⚡ कैप्चर',
+    retakeBtn: '🔄 दोबारा', flipCamBtn: '🔃 पलटें', stopCamBtn: '■ बंद',
+    capturedLabel: '📸 फोटो ली गई', capturedMeta: 'विश्लेषण के लिए तैयार',
+    analyzeCamBtn: '🔬 बीमारी विश्लेषण',
+    resultsTitle: 'विश्लेषण परिणाम',
+    remediesLabel: 'अनुशंसित उपचार',
+    lcTitle: 'कम विश्वास',
+    lcDesc: 'AI इस परिणाम के बारे में पूरी तरह आश्वस्त नहीं है। कृपया <strong>स्पष्ट, अच्छी रोशनी वाली फोटो</strong> से दोबारा प्रयास करें।',
+    lcTips: '📸 सुझाव: पत्ती फ्रेम में भरे · प्राकृतिक रोशनी उपयोग करें · धुंध से बचें',
+    tipsTitle: 'स्वस्थ फसल सुझाव',
+    tip1Title: 'सही सिंचाई', tip1Desc: 'सुबह जड़ में पानी दें — पत्तियों पर नमी कम करें।',
+    tip2Title: 'नियमित छंटाई', tip2Desc: 'रोगग्रस्त पत्तियाँ तुरंत हटाएं।',
+    tip3Title: 'फसल बदलें', tip3Desc: 'हर सीजन में जगह बदलकर बोएं।',
+    tip4Title: 'वायु संचार', tip4Desc: 'पौधों के बीच उचित दूरी रखें।',
+    askAI: 'AI से पूछें',
+  },
+  ta: {
+    navDetect: 'கண்டறி', navTips: 'குறிப்புகள்',
+    heroBadge: '🌱 AI வேளாண் உதவியாளர்',
+    heroTitle: 'தாவர நோய்களை <em>உடனடியாக</em> கண்டறியுங்கள்',
+    heroDesc: 'இலை புகைப்படம் பதிவேற்றுங்கள் அல்லது கேமரா பயன்படுத்துங்கள் — நம் AI நோயை கண்டறிந்து தீர்வு தரும்.',
+    tabUpload: '📁 படம் பதிவேற்று', tabWebcam: '📷 கேமரா பயன்படுத்து',
+    uploadLabel: 'படி 1 — இலை படம் பதிவேற்றுங்கள்',
+    uploadH3: 'இலை புகைப்படத்தை இங்கே இடுங்கள்',
+    uploadP: 'அல்லது <strong>உலாவுங்கள்</strong> · JPG, PNG, WEBP',
+    analyzeUploadBtn: '🔬 நோய் பகுப்பாய்வு', clearUploadBtn: '✕ அழி',
+    camLabel: 'படி 1 — கேமராவை இலையில் நோக்குங்கள்',
+    camPlaceholder: '"கேமரா தொடங்கு" கிளிக் செய்யுங்கள்',
+    camStatus: 'கேமரா நேரலை — இலையில் நோக்கி படம் எடுங்கள்',
+    startCamBtn: '📷 கேமரா தொடங்கு', captureBtn: '⚡ படம் எடு',
+    retakeBtn: '🔄 மீண்டும்', flipCamBtn: '🔃 திருப்பு', stopCamBtn: '■ நிறுத்து',
+    capturedLabel: '📸 படம் எடுக்கப்பட்டது', capturedMeta: 'பகுப்பாய்வுக்கு தயார்',
+    analyzeCamBtn: '🔬 நோய் பகுப்பாய்வு',
+    resultsTitle: 'பகுப்பாய்வு முடிவுகள்',
+    remediesLabel: 'பரிந்துரைக்கப்பட்ட தீர்வுகள்',
+    lcTitle: 'குறைந்த நம்பகத்தன்மை',
+    lcDesc: 'AI இந்த முடிவில் முழுமையாக நம்பகமாக இல்லை. <strong>தெளிவான, நல்ல வெளிச்சத்தில்</strong> மீண்டும் முயற்சிக்கவும்.',
+    lcTips: '📸 குறிப்பு: இலை சட்டகத்தை நிரப்பட்டும் · இயற்கை வெளிச்சம் பயன்படுத்துங்கள்',
+    tipsTitle: 'ஆரோக்கியமான பயிர் குறிப்புகள்',
+    tip1Title: 'சரியாக நீர் பாய்ச்சுங்கள்', tip1Desc: 'காலையில் வேரில் நீர் பாய்ச்சுங்கள்.',
+    tip2Title: 'தொடர்ந்து கத்தரியுங்கள்', tip2Desc: 'நோயுற்ற இலைகளை உடனடியாக அகற்றுங்கள்.',
+    tip3Title: 'பயிர் மாற்றுங்கள்', tip3Desc: 'ஒவ்வொரு பருவமும் இடத்தை மாற்றுங்கள்.',
+    tip4Title: 'காற்று ஓட்டம்', tip4Desc: 'சரியான இடைவெளியில் நடுங்கள்.',
+    askAI: 'AI கேளுங்கள்',
+  },
+  te: {
+    navDetect: 'గుర్తించు', navTips: 'చిట్కాలు',
+    heroBadge: '🌱 AI వ్యవసాయ సహాయకుడు',
+    heroTitle: 'మొక్కల వ్యాధులను <em>వెంటనే</em> గుర్తించండి',
+    heroDesc: 'ఆకు ఫోటో అప్‌లోడ్ చేయండి లేదా కెమెరా వాడండి — మన AI వ్యాధిని గుర్తించి పరిష్కారం ఇస్తుంది.',
+    tabUpload: '📁 చిత్రం అప్‌లోడ్', tabWebcam: '📷 కెమెరా వాడు',
+    uploadLabel: 'దశ 1 — ఆకు చిత్రం అప్‌లోడ్ చేయండి',
+    uploadH3: 'ఆకు ఫోటోను ఇక్కడ వేయండి',
+    uploadP: 'లేదా <strong>బ్రౌజ్ చేయండి</strong> · JPG, PNG, WEBP',
+    analyzeUploadBtn: '🔬 వ్యాధి విశ్లేషణ', clearUploadBtn: '✕ తొలగించు',
+    camLabel: 'దశ 1 — కెమెరాను ఆకుపై చూపించండి',
+    camPlaceholder: '"కెమెరా ప్రారంభించు" క్లిక్ చేయండి',
+    camStatus: 'కెమెరా లైవ్ — ఆకుపై చూపించి క్యాప్చర్ నొక్కండి',
+    startCamBtn: '📷 కెమెరా ప్రారంభించు', captureBtn: '⚡ క్యాప్చర్',
+    retakeBtn: '🔄 మళ్ళీ', flipCamBtn: '🔃 తిప్పు', stopCamBtn: '■ ఆపు',
+    capturedLabel: '📸 ఫ్రేమ్ తీయబడింది', capturedMeta: 'విశ్లేషణకు సిద్ధం',
+    analyzeCamBtn: '🔬 వ్యాధి విశ్లేషణ',
+    resultsTitle: 'విశ్లేషణ ఫలితాలు',
+    remediesLabel: 'సిఫారసు చేసిన పరిష్కారాలు',
+    lcTitle: 'తక్కువ విశ్వాసం',
+    lcDesc: 'AI ఈ ఫలితంపై పూర్తిగా నిశ్చితంగా లేదు. <strong>స్పష్టమైన, మంచి వెలుతురులో ఫోటో</strong>తో మళ్ళీ ప్రయత్నించండి.',
+    lcTips: '📸 చిట్కా: ఆకు ఫ్రేమ్ నింపనివ్వండి · సహజ వెలుతురు వాడండి',
+    tipsTitle: 'ఆరోగ్యకరమైన పంట చిట్కాలు',
+    tip1Title: 'తెలివిగా నీరు పోయండి', tip1Desc: 'ఉదయం మొదట్లో నీరు పోయండి.',
+    tip2Title: 'క్రమం తప్పకుండా కత్తిరించండి', tip2Desc: 'రోగగ్రస్త ఆకులను వెంటనే తొలగించండి.',
+    tip3Title: 'పంటలు మార్చండి', tip3Desc: 'ప్రతి సీజన్‌లో స్థానాన్ని మార్చండి.',
+    tip4Title: 'గాలి ప్రసరణ', tip4Desc: 'మొక్కల మధ్య సరైన దూరం పాటించండి.',
+    askAI: 'AI అడగండి',
+  }
+};
+
+function changeSiteLang() {
+  const lang = document.getElementById('siteLang').value;
+  const t = TRANSLATIONS[lang];
+  if (!t) return;
+
+  // Also sync chatbot language
+  document.getElementById('chatLang').value = lang;
+  currentLang = lang;
+  document.getElementById('chatWelcomeMsg').textContent = WELCOME_MSGS[lang];
+  document.getElementById('chatInput').placeholder = PLACEHOLDERS[lang];
+  chatHistory = [];
+
+  // Nav
+  document.getElementById('navDetect').textContent = t.navDetect;
+  document.getElementById('navTips').textContent = t.navTips;
+
+  // Hero
+  document.getElementById('heroBadge').textContent = t.heroBadge;
+  document.getElementById('heroTitle').innerHTML = t.heroTitle;
+  document.getElementById('heroDesc').textContent = t.heroDesc;
+
+  // Tabs
+  document.getElementById('tabUpload').innerHTML = t.tabUpload;
+  document.getElementById('tabWebcam').innerHTML = t.tabWebcam;
+
+  // Upload panel
+  document.querySelector('#panelUpload .section-label').textContent = t.uploadLabel;
+  document.querySelector('#uploadZone h3').textContent = t.uploadH3;
+  document.querySelector('#uploadZone p').innerHTML = t.uploadP;
+  document.getElementById('analyzeUploadBtn').textContent = t.analyzeUploadBtn;
+  document.getElementById('clearUploadBtn').textContent = t.clearUploadBtn;
+
+  // Camera panel
+  document.querySelector('#panelWebcam .section-label').textContent = t.camLabel;
+  document.querySelector('#webcamPlaceholder span:last-child').textContent = t.camPlaceholder;
+  document.getElementById('camStatus').innerHTML = `<div class="cam-live-dot"></div> ${t.camStatus}`;
+  document.getElementById('startCamBtn').textContent = t.startCamBtn;
+  document.getElementById('captureBtn').textContent = t.captureBtn;
+  document.getElementById('retakeBtn').textContent = t.retakeBtn;
+  document.getElementById('flipCamBtn').textContent = t.flipCamBtn;
+  document.getElementById('stopCamBtn').textContent = t.stopCamBtn;
+  document.querySelector('.captured-label').textContent = t.capturedLabel;
+  document.getElementById('analyzeCamBtn').textContent = t.analyzeCamBtn;
+
+  // Results
+  document.querySelector('.results-title').innerHTML = `${t.resultsTitle} <span class="source-tag" id="sourceTag">${document.getElementById('sourceTag')?.textContent || ''}</span>`;
+  document.querySelector('.prob-label:last-of-type') && (document.querySelector('.prob-label:last-of-type').textContent = t.remediesLabel);
+  document.querySelectorAll('.prob-label').forEach(el => { if(el.textContent.includes('Remedies') || el.textContent.includes(t.remediesLabel)) el.textContent = t.remediesLabel; });
+
+  // Low confidence box
+  document.querySelector('.lc-title').textContent = t.lcTitle;
+  document.querySelector('.lc-desc').innerHTML = t.lcDesc;
+  document.querySelector('.lc-tips').textContent = t.lcTips;
+
+  // Tips section
+  document.querySelector('.tips-strip h2').textContent = t.tipsTitle;
+  const tipCards = document.querySelectorAll('.tip-card');
+  if (tipCards.length >= 4) {
+    tipCards[0].querySelector('h4').textContent = t.tip1Title;
+    tipCards[0].querySelector('p').textContent = t.tip1Desc;
+    tipCards[1].querySelector('h4').textContent = t.tip2Title;
+    tipCards[1].querySelector('p').textContent = t.tip2Desc;
+    tipCards[2].querySelector('h4').textContent = t.tip3Title;
+    tipCards[2].querySelector('p').textContent = t.tip3Desc;
+    tipCards[3].querySelector('h4').textContent = t.tip4Title;
+    tipCards[3].querySelector('p').textContent = t.tip4Desc;
+  }
+
+  // Chat bubble label
+  document.querySelector('.chat-bubble-label').textContent = t.askAI;
+}
+
+// ── VOICE INPUT & OUTPUT ─────────────────────────────────────
+const SPEECH_LANG_MAP = {
+  en: 'en-IN', ml: 'ml-IN', hi: 'hi-IN', ta: 'ta-IN', te: 'te-IN'
+};
+
+let recognition = null;
+let isListening = false;
+let isSpeaking = false;
+let speakerOn = true; // Speaker is ON by default
+
+function toggleSpeaker() {
+  speakerOn = !speakerOn;
+  const btn = document.getElementById('speakerBtn');
+  if (speakerOn) {
+    btn.textContent = '🔊';
+    btn.classList.remove('muted');
+    btn.title = 'Speaker ON — click to mute';
+  } else {
+    btn.textContent = '🔇';
+    btn.classList.add('muted');
+    btn.title = 'Speaker OFF — click to unmute';
+    window.speechSynthesis.cancel(); // Stop any ongoing speech
+  }
+}
+
+// Voice Input — Speech to Text
+function toggleVoiceInput() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    addMessage("Sorry, your browser doesn't support voice input. Please use Chrome!", 'bot');
+    return;
+  }
+
+  if (isListening) {
+    recognition.stop();
+    return;
+  }
+
+  const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SpeechRecognition();
+  recognition.lang = SPEECH_LANG_MAP[currentLang] || 'en-IN';
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('chatMicBtn').classList.add('listening');
+    document.getElementById('chatMicBtn').textContent = '🔴';
+    document.getElementById('chatInput').placeholder = 'Listening...';
+  };
+
+  recognition.onresult = (e) => {
+    const transcript = e.results[0][0].transcript;
+    document.getElementById('chatInput').value = transcript;
+    sendChat();
+  };
+
+  recognition.onerror = (e) => {
+    console.error('Speech error:', e.error);
+    stopListening();
+    if (e.error === 'not-allowed') {
+      addMessage("Microphone permission denied. Please allow microphone access!", 'bot');
+    }
+  };
+
+  recognition.onend = () => stopListening();
+
+  recognition.start();
+}
+
+function stopListening() {
+  isListening = false;
+  const btn = document.getElementById('chatMicBtn');
+  btn.classList.remove('listening');
+  btn.textContent = '🎤';
+  document.getElementById('chatInput').placeholder = PLACEHOLDERS[currentLang] || 'Ask a farming question...';
+}
+
+// Voice Output — Text to Speech
+function speakReply(text) {
+  if (!('speechSynthesis' in window) || !speakerOn) return;
+
+  // Stop any ongoing speech
+  window.speechSynthesis.cancel();
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = SPEECH_LANG_MAP[currentLang] || 'en-IN';
+  utterance.rate = 0.9;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+
+  utterance.onstart = () => { isSpeaking = true; };
+  utterance.onend = () => { isSpeaking = false; };
+
+  window.speechSynthesis.speak(utterance);
 }
 
 // Send on Enter key
