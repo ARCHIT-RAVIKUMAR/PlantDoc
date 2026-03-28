@@ -1,6 +1,6 @@
-# AgriFury 🐾 | AI Farming Assistant
+# PlantDoc 🐾 | AI Farming Assistant
 
-**AgriFury** is a simple, smart web application designed to help farmers instantly identify plant diseases and find effective remedies using AI.
+**PlantDoc** is a simple, smart web application designed to help farmers instantly identify plant diseases and find effective remedies using AI.
 
 ## 🌿 Aim
 To develop a user-friendly assistant that identifies plant diseases through a smartphone camera or photo upload and provides immediate diagnostic results and treatment advice.
@@ -21,5 +21,5 @@ To develop a user-friendly assistant that identifies plant diseases through a sm
 
 
 ## 🔗 Live
-[Launch AgriFury Live](https://archit-ravikumar.github.io/AgriFury/)
+[Launch PlantDoc Live](https://archit-ravikumar.github.io/AgriFury/)
 :)
